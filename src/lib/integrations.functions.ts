@@ -79,3 +79,12 @@ export const checkIntegrationVerify = createServerFn({ method: "POST" })
       return { result: "unreachable" as const };
     }
   });
+
+/** The caller's own ROUT username, for the "rout.be/<username>" bio link. */
+export const getMyRoutUsername = createServerFn({ method: "GET" })
+  .middleware([requireAuth])
+  .handler(async ({ context }) => {
+    const { sql } = await import("@/lib/neon");
+    const rows = (await sql`select username from public.profiles where id = ${context.userId} limit 1`) as { username: string | null }[];
+    return { username: rows[0]?.username ?? null };
+  });

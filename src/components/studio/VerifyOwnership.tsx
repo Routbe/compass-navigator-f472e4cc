@@ -3,7 +3,8 @@ import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
 import { Copy, Loader2, ShieldCheck } from "lucide-react";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { checkIntegrationVerify } from "@/lib/integrations.functions";
+import { useQuery } from "@tanstack/react-query";
+import { checkIntegrationVerify, getMyRoutUsername } from "@/lib/integrations.functions";
 import type { BioProvider } from "@/lib/open-web-rules";
 
 /**
@@ -14,19 +15,20 @@ import type { BioProvider } from "@/lib/open-web-rules";
 export function VerifyOwnership({
   provider,
   label,
-  username,
   onVerified,
 }: {
   provider: BioProvider;
   label: string;
-  username: string | null;
   onVerified: () => void;
 }) {
   const check = useServerFn(checkIntegrationVerify);
   const [open, setOpen] = useState(false);
   const [busy, setBusy] = useState(false);
   const [hint, setHint] = useState<string | null>(null);
-  const link = `rout.be/${username ?? "jouwnaam"}`;
+  const fetchName = useServerFn(getMyRoutUsername);
+  const me = useQuery({ queryKey: ["my-rout-username"], queryFn: () => fetchName(), enabled: open, staleTime: 300_000 });
+  const username = me.data?.username ?? null;
+  const link = `rout.be/${username ?? "…"}`;
 
   const run = async () => {
     setBusy(true);
@@ -72,7 +74,7 @@ export function VerifyOwnership({
             {link}
             <Copy className="h-4 w-4" aria-label="Kopieer link" />
           </button>
-          {hint && <p className="rounded-lg border border-border bg-muted/50 px3 p-3 text-xs text-muted-foreground">{hint}</p>}
+          {hint && <p className="rounded-lg border border-border bg-muted/50 p-3 text-xs text-muted-foreground">{hint}</p>}
           <DialogFooter>
             <button type="button" onClick={() => void run()} disabled={busy || !username} className={`relative inline-flex h-9 items-center justify-center gap-1.5 overflow-hidden rounded-lg bg-primary px-4 text-sm font-medium text-primary-foreground hover:opacity-90 ${busy ? "animate-pulse" : ""}`}>
               {busy && <Loader2 className="h-4 w-4 animate-spin" />}

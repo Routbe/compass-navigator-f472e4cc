@@ -15,6 +15,7 @@ import { getReachSettings, syncFollowersNow, updateReachSettings } from "@/lib/t
 import { accountReach, countsTowardsReach, followerLabel, formatReach, relativeTimeNl, type ReachSettings } from "@/lib/total-reach";
 import { ProfileScope } from "@/components/studio/IntegrationVault";
 import { AddLiveIntegrationModal } from "@/components/studio/AddLiveIntegrationModal";
+import type { BioProvider } from "@/lib/open-web-rules";
 import { VerifyOwnership } from "@/components/studio/VerifyOwnership";
 import { OfficialVerifyButton, hasOfficialVerify } from "@/components/studio/OfficialVerifyButton";
 import { isBioVerifiable } from "@/lib/open-web-rules";
@@ -237,7 +238,7 @@ export function LiveIntegrations() {
             )}
             {!row.verified && isBioVerifiable(row.provider) && (
               <VerifyOwnership
-                provider={row.provider as "bluesky" | "wsocial" | "mastodon" | "github"}
+                provider={row.provider as BioProvider}
                 label={item.label}
                 onVerified={() => void qc.invalidateQueries({ queryKey: ["my-integrations"] })}
               />
