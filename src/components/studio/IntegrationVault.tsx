@@ -17,6 +17,7 @@ import { normalizeIntegrationValue, type Audience } from "@/lib/integrations-rul
 import { disconnectSpotifyPresence, setSpotifyPresenceScope, getMyPresence, setSpotifyPresenceVisible, testSpotifyPresence } from "@/lib/presence.functions";
 import { SnapchatPanel } from "@/components/studio/SnapchatPanel";
 import { getMyIntegrations, removeIntegration, saveIntegration } from "@/lib/integrations.functions";
+import type { BioProvider } from "@/lib/open-web-rules";
 import { VerifyOwnership } from "@/components/studio/VerifyOwnership";
 import { OfficialVerifyButton, hasOfficialVerify } from "@/components/studio/OfficialVerifyButton";
 import { isBioVerifiable } from "@/lib/open-web-rules";
@@ -309,7 +310,7 @@ export function IntegrationVault({ focus }: { focus?: string } = {}) {
                       <OfficialVerifyButton provider={item.id} handle={row.handle} label={item.label} />
                     )}
                     {!row.verified && isBioVerifiable(item.id) && (
-                      <VerifyOwnership provider={item.id as "bluesky" | "wsocial" | "mastodon" | "github"} label={item.label} onVerified={() => void refresh()} />
+                      <VerifyOwnership provider={item.id as BioProvider} label={item.label} onVerified={() => void refresh()} />
                     )}
                     <AudiencePicker
                       value={row.audience}

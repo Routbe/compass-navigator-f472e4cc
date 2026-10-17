@@ -15,6 +15,7 @@ import { getReachSettings, syncFollowersNow, updateReachSettings } from "@/lib/t
 import { accountReach, countsTowardsReach, followerLabel, formatReach, relativeTimeNl, type ReachSettings } from "@/lib/total-reach";
 import { ProfileScope } from "@/components/studio/IntegrationVault";
 import { AddLiveIntegrationModal } from "@/components/studio/AddLiveIntegrationModal";
+import type { BioProvider } from "@/lib/open-web-rules";
 import { VerifyOwnership } from "@/components/studio/VerifyOwnership";
 import { OfficialVerifyButton, hasOfficialVerify } from "@/components/studio/OfficialVerifyButton";
 import { isBioVerifiable } from "@/lib/open-web-rules";
@@ -237,14 +238,14 @@ export function LiveIntegrations() {
             )}
             {!row.verified && isBioVerifiable(row.provider) && (
               <VerifyOwnership
-                provider={row.provider as "bluesky" | "wsocial" | "mastodon" | "github"}
+                provider={row.provider as BioProvider}
                 label={item.label}
                 onVerified={() => void qc.invalidateQueries({ queryKey: ["my-integrations"] })}
               />
             )}
             <div className="flex items-center gap-2">
               <span className="flex-1 text-[11px] text-muted-foreground">
-                Status: {row.verified ? "Geverifieerd ✅" : "Handmatig"}
+                Status: {row.verified ? (row.verificationMethod === "bio_scrape" ? <span className="font-medium text-emerald-600">✓ Geverifieerd via bio</span> : <span className="font-medium text-emerald-600">✓ Geverifieerd</span>) : "Handmatig"}
               </span>
               <button type="button" disabled={busy === row.provider} className={`${btn} flex-none px-3 text-destructive`}
                 onClick={() => void run(row.provider, async () => {

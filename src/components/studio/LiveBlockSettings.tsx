@@ -7,6 +7,7 @@ import { Switch } from "@/components/ui/switch";
 import { getMyIntegrations, removeIntegration, saveIntegration } from "@/lib/integrations.functions";
 import { integrationById, LIVE_STAT_LABELS, liveStatOptions, shownLiveStats } from "@/lib/integrations-catalog";
 import { OfficialVerifyButton, hasOfficialVerify } from "@/components/studio/OfficialVerifyButton";
+import type { BioProvider } from "@/lib/open-web-rules";
 import { VerifyOwnership } from "@/components/studio/VerifyOwnership";
 import { isBioVerifiable } from "@/lib/open-web-rules";
 
@@ -85,7 +86,7 @@ export function LiveBlockSettings({ provider, stats, onStatsChange }: {
       )}
       {row && !row.verified && isBioVerifiable(provider) && (
         <VerifyOwnership
-          provider={provider as "bluesky" | "wsocial" | "mastodon" | "github"}
+          provider={provider as BioProvider}
           label={label}
           onVerified={() => void qc.invalidateQueries({ queryKey: ["my-integrations"] })}
         />
