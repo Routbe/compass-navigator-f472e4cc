@@ -1,6 +1,9 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { parseDisplayPrefs } from "@/lib/profile-display";
-import { ogSvg } from "@/lib/og-card";
+import { ogSvg, type OgBadge, type OgAvatarShape } from "@/lib/og-card";
+import { themeOf } from "@/lib/profile";
+import { fontPairingOf } from "@/lib/profile-design";
+import { ogHeadingFont } from "@/lib/og-fonts";
 import { sanitizeHandleInput } from "@/lib/validations/sanitizeHandle";
 
 /**
@@ -27,6 +30,7 @@ export const Route = createFileRoute("/api_/public/og/$handle")({
         let tagline = "Eén soevereine link voor alles wat je maakt.";
         let verified = false;
         let accent = "#C9A84C";
+        let design: Record<string, unknown> = { bg: "#131211" };
         let avatarUrl: string | null = null;
         let urlLabel: string | undefined;
 
@@ -34,7 +38,10 @@ export const Route = createFileRoute("/api_/public/og/$handle")({
           const { sql } = await import("@/lib/neon");
           const rows = (await sql`
             select display_name, tagline, bio, avatar_url, verified,
-                   to_jsonb(profiles) -> 'display_prefs' as display_prefs
+                   to_jsonb(profiles) -> 'display_prefs' as display_prefs,
+                   to_jsonb(profiles) ->> 'theme' as theme,
+                   coalesce((to_jsonb(profiles) ->> 'is_business')::boolean, false) as is_business,
+                   coalesce((to_jsonb(profiles) ->> 'is_influencer')::boolean, false) as is_influencer
               from public.profiles
              where username = ${handle} and coalesce(is_banned, false) = false
              limit 1
@@ -52,7 +59,36 @@ export const Route = createFileRoute("/api_/public/og/$handle")({
             ((row["bio"] as string | null) ?? "").trim().slice(0, 160) ||
             tagline;
           verified = Boolean(row["verified"]);
-          accent = prefs.accentColor ?? accent;
+          // Studio-ontwerp: thema + eigen canvas/patroon, kopfont, avatarvorm, badge.
+          const t = themeOf(String(row["theme"] ?? ""));
+          const p = prefs as typeof prefs & Record<string, unknown>;
+          const custom = Boolean(p["typographyCustom"] || p["customDesign"]);
+          accent = prefs.accentColor ?? (p["patternColor"] as string | null) ?? t.accent ?? accent;
+          const badge: OgBadge =
+            !verified || !prefs.badgeVisible || prefs.badgeType === "none"
+              ? null
+              : row["is_business"]
+                ? "domain"
+                : row["is_influencer"]
+                  ? "influencer"
+                  : prefs.badgeType === "human"
+                    ? "human"
+                    : "verified";
+          design = {
+            bg: (p["canvasColor"] as string | null) ?? t.bg,
+            card: t.card,
+            text: t.text,
+            muted: t.muted,
+            pattern: prefs.backgroundStyle,
+            gradientFrom: prefs.bannerStyle === "gradient" ? prefs.bannerFrom : null,
+            gradientTo: prefs.bannerStyle === "gradient" ? prefs.bannerTo : null,
+            headingFont: ogHeadingFont(
+              custom ? fontPairingOf(p["fontPairing"] as never).heading : prefs.typography === "serif" ? "'Playfair Display'" : prefs.typography === "mono" ? "'JetBrains Mono'" : "'Inter'",
+            ),
+            titleColor: custom ? ((p["titleColor"] as string | null) ?? null) : null,
+            avatarShape: (prefs.avatarShape ?? "circle") as OgAvatarShape,
+            badge,
+          };
           urlLabel = verified ? `rout.be/${handle}` : `rout.be/u/${handle}`;
           const avatar = row["avatar_url"] as string | null;
           avatarUrl = avatar && avatar.startsWith("http") ? avatar : null;
@@ -73,14 +109,14 @@ export const Route = createFileRoute("/api_/public/og/$handle")({
                 handle,
                 name,
                 tagline,
-                verified,
                 accent,
-                bg: "#131211",
-                alias: !verified,
+                ...design,
+                bg: String(design.bg),
                 avatarUrl: inlineAvatar,
                 ...(urlLabel ? { urlLabel } : {}),
               }),
               new URL(request.url).origin,
+              String(design.bg),
             );
             return new Response(png as unknown as BodyInit, {
               headers: { "content-type": "image/png", "cache-control": cache },
@@ -95,10 +131,9 @@ export const Route = createFileRoute("/api_/public/og/$handle")({
           handle,
           name,
           tagline,
-          verified,
           accent,
-          bg: "#131211",
-          alias: !verified,
+          ...design,
+          bg: String(design.bg),
           avatarUrl,
           ...(urlLabel ? { urlLabel } : {}),
         });

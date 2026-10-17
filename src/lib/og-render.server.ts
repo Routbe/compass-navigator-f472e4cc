@@ -10,7 +10,9 @@
 
 const WASM_URL = "https://cdn.jsdelivr.net/npm/@resvg/resvg-wasm@2.6.2/index_bg.wasm";
 /** Eigen fonts uit `public/fonts` — geen externe fontdienst, geen tracking. */
-const FONT_PATHS = ["/fonts/Inter-Regular.ttf", "/fonts/Inter-SemiBold.ttf"];
+import { OG_FONT_FILES } from "@/lib/og-fonts";
+
+const FONT_PATHS = ["/fonts/Inter-Regular.ttf", "/fonts/Inter-SemiBold.ttf", ...OG_FONT_FILES];
 
 /**
  * De wasm-runtime kan per isolate maar één keer geïnitialiseerd worden, terwijl
@@ -62,12 +64,12 @@ async function ensureFonts(origin: string) {
  * Zet een SVG-string om in PNG-bytes. Gooit wanneer de wasm-runtime of de
  * fonts onbereikbaar zijn; de aanroeper valt dan terug op de SVG-variant.
  */
-export async function svgToPng(svg: string, origin: string, width = 1200): Promise<Uint8Array> {
+export async function svgToPng(svg: string, origin: string, background = "#131211", width = 1200): Promise<Uint8Array> {
   await ensureWasm();
   const fonts = await ensureFonts(origin);
   const { Resvg } = await import("@resvg/resvg-wasm");
   const renderer = new Resvg(svg, {
-    background: "#131211",
+    background,
     fitTo: { mode: "width", value: width },
     font: {
       fontBuffers: fonts,
