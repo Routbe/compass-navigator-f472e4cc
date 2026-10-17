@@ -1,25 +1,26 @@
 import { describe, expect, it } from "vitest";
-import { bioContainsCode, isPublicHost, normalizeFeed, normalizeMastodon, parseFeed } from "./open-web-rules";
+import { bioContainsRoutLink, isBioVerifiable } from "@/lib/open-web-rules";
 
-describe("open-web rules", () => {
-  it("finds the code in an HTML bio", () => {
-    expect(bioContainsCode("<p>hoi ROUT-ab12cd</p>", "rout-ab12cd")).toBe(true);
-    expect(bioContainsCode("hoi", "rout-ab12cd")).toBe(false);
+describe("bio link verification", () => {
+  it("matches the exact link", () => {
+    expect(bioContainsRoutLink("Find me at rout.be/anna", "anna")).toBe(true);
+    expect(bioContainsRoutLink("https://rout.be/anna/", "anna")).toBe(true);
+    expect(bioContainsRoutLink('<a href="https://www.rout.be/anna">x</a>', "anna")).toBe(true);
+    expect(bioContainsRoutLink("me: rout.be/Anna.", "anna")).toBe(true);
   });
-  it("normalizes mastodon handles", () => {
-    expect(normalizeMastodon("@Jan@mastodon.social")).toBe("jan@mastodon.social");
-    expect(normalizeMastodon("jan@localhost")).toBeNull();
+  it("rejects a longer username (substring attack)", () => {
+    expect(bioContainsRoutLink("rout.be/annabel", "anna")).toBe(false);
+    expect(bioContainsRoutLink("rout.be/anna.b", "anna")).toBe(false);
+    expect(bioContainsRoutLink("rout.be/anna-x", "anna")).toBe(false);
   });
-  it("blocks internal hosts for feeds", () => {
-    expect(isPublicHost("127.0.0.1")).toBe(false);
-    expect(normalizeFeed("http://192.168.0.1/feed")).toBeNull();
-    expect(normalizeFeed("jan.substack.com")).toBe("https://jan.substack.com/feed");
-    expect(normalizeFeed("medium.com/@jan")).toBe("https://medium.com/feed/@jan");
+  it("rejects a look-alike domain", () => {
+    expect(bioContainsRoutLink("evilrout.be/anna", "anna")).toBe(false);
+    expect(bioContainsRoutLink("rout.bex/anna", "anna")).toBe(false);
   });
-  it("parses the 3 newest feed entries", () => {
-    const xml = `<rss><channel><title>Blog</title>${[1, 2, 3, 4].map((i) => `<item><title>P${i}</title><link>https://x.be/${i}</link></item>`).join("")}</channel></rss>`;
-    const f = parseFeed(xml);
-    expect(f.title).toBe("Blog");
-    expect(f.items.map((i) => i.title)).toEqual(["P1", "P2", "P3"]);
+  it("treats regex characters in the username literally", () => {
+    expect(bioContainsRoutLink("rout.be/aXb", "a.b")).toBe(false);
+  });
+  it("supports Chess.com", () => {
+    expect(isBioVerifiable("chesscom")).toBe(true);
   });
 });
