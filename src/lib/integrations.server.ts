@@ -480,7 +480,7 @@ export async function saveMine(
       status_json = case when public.user_integrations.handle = excluded.handle then public.user_integrations.status_json end,
       status_at = case when public.user_integrations.handle = excluded.handle then public.user_integrations.status_at end,
       updated_at = now()
-    returning provider, handle, audience, visible, verified, show_on_verified, show_on_alias`) as Row[];
+    returning provider, handle, audience, visible, verified, verified_via, verified_at, show_on_verified, show_on_alias`) as Row[];
   return toMine(rows[0]!);
 }
 
