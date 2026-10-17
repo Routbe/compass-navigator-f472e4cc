@@ -1,3 +1,4 @@
+import logoSvg from "../../public/logo.svg?raw";
 /**
  * Server-only PDF factuur — met de hand opgebouwd (geen native afhankelijkheden,
  * draait dus ook in de Worker-runtime).
@@ -92,32 +93,57 @@ function background(w: number, h: number): string {
   return `${CREAM} rg 0 0 ${w} ${h} re f\n`;
 }
 
+/** Pad-data van het officiële ROUT-konijn (public/logo.svg), y-as omhoog. */
+const LOGO_D = (logoSvg.match(/\sd="([^"]+)"/) ?? [])[1] ?? "";
+
 /**
- * Officieel ROUT-embleem: konijn als fijne lijntekening (kop, twee oren, oog,
- * snuit). Bewust minimalistisch — één gewicht, geen vulling.
+ * Officieel ROUT-embleem: exact de vectorvorm uit `public/logo.svg`,
+ * omgezet naar PDF-padoperatoren. Nooit een eigen tekening.
  */
-function bunnyEmblem(x: number, y: number): string {
-  const k = 0.5523;
-  const r = 9;
-  const cx = x + 10;
-  const cy = y;
-  return (
-    `${CHARCOAL} RG 0.7 w\n` +
-    // kop (cirkel)
-    `${cx - r} ${cy} m ` +
-    `${cx - r} ${cy + r * k} ${cx - r * k} ${cy + r} ${cx} ${cy + r} c ` +
-    `${cx + r * k} ${cy + r} ${cx + r} ${cy + r * k} ${cx + r} ${cy} c ` +
-    `${cx + r} ${cy - r * k} ${cx + r * k} ${cy - r} ${cx} ${cy - r} c ` +
-    `${cx - r * k} ${cy - r} ${cx - r} ${cy - r * k} ${cx - r} ${cy} c S\n` +
-    // linkeroor
-    `${cx - 4} ${cy + 7} m ${cx - 9} ${cy + 20} ${cx - 4} ${cy + 26} ${cx - 1.5} ${cy + 12} c S\n` +
-    // rechteroor
-    `${cx + 4} ${cy + 7} m ${cx + 9} ${cy + 20} ${cx + 4} ${cy + 26} ${cx + 1.5} ${cy + 12} c S\n` +
-    // snuit
-    `${cx - 2} ${cy - 3.4} m ${cx} ${cy - 5} ${cx + 2} ${cy - 5} ${cx + 3.4} ${cy - 3.2} c S\n` +
-    // oog
-    `${CHARCOAL} rg ${cx + 2.6} ${cy + 1.2} 1.5 1.5 re f\n`
-  );
+function bunnyEmblem(x: number, y: number, width = 20): string {
+  const s = width / 10240;
+  const tokens = LOGO_D.match(/[a-zA-Z]|-?\d*\.?\d+(?:e-?\d+)?/g) ?? [];
+  let i = 0;
+  let cmd = "";
+  let cx = 0;
+  let cy = 0;
+  let sx = 0;
+  let sy = 0;
+  const num = () => Number(tokens[i++]);
+  const P = (px: number, py: number) => `${(x + px * s).toFixed(2)} ${(y - 6 + py * s).toFixed(2)}`;
+  let out = `${CHARCOAL} rg\n`;
+  while (i < tokens.length) {
+    if (/[a-zA-Z]/.test(tokens[i]!)) cmd = tokens[i++]!;
+    const rel = cmd === cmd.toLowerCase();
+    switch (cmd.toLowerCase()) {
+      case "m": {
+        const nx = num(), ny = num();
+        cx = rel ? cx + nx : nx; cy = rel ? cy + ny : ny; sx = cx; sy = cy;
+        out += `${P(cx, cy)} m\n`;
+        cmd = rel ? "l" : "L";
+        break;
+      }
+      case "l": {
+        const nx = num(), ny = num();
+        cx = rel ? cx + nx : nx; cy = rel ? cy + ny : ny;
+        out += `${P(cx, cy)} l\n`;
+        break;
+      }
+      case "c": {
+        const v = [num(), num(), num(), num(), num(), num()];
+        const ox = rel ? cx : 0, oy = rel ? cy : 0;
+        out += `${P(ox + v[0]!, oy + v[1]!)} ${P(ox + v[2]!, oy + v[3]!)} ${P(ox + v[4]!, oy + v[5]!)} c\n`;
+        cx = ox + v[4]!; cy = oy + v[5]!;
+        break;
+      }
+      case "z":
+        out += "h\n"; cx = sx; cy = sy;
+        break;
+      default:
+        i++;
+    }
+  }
+  return out + "f*\n";
 }
 
 /**
