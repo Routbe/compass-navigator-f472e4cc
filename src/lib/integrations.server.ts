@@ -36,6 +36,8 @@ export type MyIntegration = {
   audience: Audience;
   visible: boolean;
   verified: boolean;
+  verifiedAt: string | null;
+  verificationMethod: "oauth" | "bio_scrape" | null;
   showOnVerified: boolean;
   showOnAlias: boolean;
 };
@@ -54,6 +56,8 @@ function toMine(r: Row): MyIntegration {
     audience: (r["audience"] as Audience) ?? "both",
     visible: r["visible"] !== false,
     verified: r["verified"] === true,
+    verifiedAt: r["verified_at"] ? new Date(String(r["verified_at"])).toISOString() : null,
+    verificationMethod: r["verified"] !== true ? null : r["verified_via"] === "bio" ? "bio_scrape" : "oauth",
     showOnVerified: r["show_on_verified"] !== false,
     showOnAlias: r["show_on_alias"] !== false,
   };
@@ -364,6 +368,23 @@ export async function fetchBio(provider: string, handle: string): Promise<string
       const j = (await getJson(`https://api.github.com/users/${encodeURIComponent(handle)}`, githubAuth())) as { bio?: string | null } | null;
       return j ? j.bio ?? "" : null;
     }
+    case "chesscom": {
+      // Geen publieke bio-API: lees de openbare profielpagina.
+      try {
+        const res = await fetch(`https://www.chess.com/member/${encodeURIComponent(handle)}`, {
+          headers: {
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36",
+            Accept: "text/html",
+          },
+          redirect: "follow",
+          signal: AbortSignal.timeout(8000),
+        });
+        if (!res.ok) return null;
+        return (await res.text()).slice(0, 1_500_000);
+      } catch {
+        return null;
+      }
+    }
     default:
       return null;
   }
@@ -382,20 +403,30 @@ export async function startBioVerify(userId: string, provider: string): Promise<
   return code;
 }
 
-/** Reads the live bio; marks the connection verified when the stored code is found. */
+/**
+ * Reads the live bio; marks the connection verified when it contains the
+ * member's own link `rout.be/<username>` (strict word-boundary match) or the
+ * still-valid temporary code.
+ */
 export async function checkBioVerify(userId: string, provider: string): Promise<"verified" | "not_found" | "expired" | "unreachable"> {
-  const { bioContainsCode, VERIFY_CODE_TTL_MS } = await import("./open-web-rules");
-  const rows = (await sql`select handle, verify_code, verify_code_at from public.user_integrations
-     where user_id = ${userId} and provider = ${provider}`) as Row[];
+  const { bioContainsCode, bioContainsRoutLink, isBioVerifiable, VERIFY_CODE_TTL_MS } = await import("./open-web-rules");
+  if (!isBioVerifiable(provider)) return "unreachable";
+  const rows = (await sql`select i.handle, i.verify_code, i.verify_code_at, p.username
+      from public.user_integrations i left join public.profiles p on p.id = i.user_id
+     where i.user_id = ${userId} and i.provider = ${provider}`) as Row[];
   const r = rows[0];
-  const code = r?.["verify_code"] ? String(r["verify_code"]) : "";
-  const at = r?.["verify_code_at"] ? Date.parse(String(r["verify_code_at"])) : 0;
-  if (!r || !code || Date.now() - at > VERIFY_CODE_TTL_MS) return "expired";
+  if (!r) return "expired";
+  const code = r["verify_code"] ? String(r["verify_code"]) : "";
+  const at = r["verify_code_at"] ? Date.parse(String(r["verify_code_at"])) : 0;
+  const codeValid = Boolean(code) && Date.now() - at <= VERIFY_CODE_TTL_MS;
+  const username = r["username"] ? String(r["username"]) : "";
   const bio = await fetchBio(provider, String(r["handle"]));
   if (bio === null) return "unreachable";
-  if (!bioContainsCode(bio, code)) return "not_found";
-  await sql`update public.user_integrations set verified = true, verified_via = 'bio', verify_code = null, verify_code_at = null, updated_at = now()
-     where user_id = ${userId} and provider = ${provider} and verify_code = ${code}`;
+  const ok = bioContainsRoutLink(bio, username) || (codeValid && bioContainsCode(bio, code));
+  if (!ok) return "not_found";
+  await sql`update public.user_integrations set verified = true, verified_via = 'bio', verified_at = now(),
+       verify_code = null, verify_code_at = null, updated_at = now()
+     where user_id = ${userId} and provider = ${provider}`;
   return "verified";
 }
 
@@ -410,7 +441,7 @@ function decodeXml(s: string): string {
 
 export async function listMine(userId: string): Promise<MyIntegration[]> {
   const rows = (await sql`
-    select provider, handle, audience, visible, verified, show_on_verified, show_on_alias from public.user_integrations
+    select provider, handle, audience, visible, verified, verified_via, verified_at, show_on_verified, show_on_alias from public.user_integrations
      where user_id = ${userId} order by created_at`) as Row[];
   return rows.map(toMine);
 }
@@ -445,11 +476,14 @@ export async function saveMine(
       verified_via = case when excluded.verified then 'sso'
         when public.user_integrations.handle = excluded.handle and public.user_integrations.verified_via = 'bio' then 'bio'
         else null end,
+      verified_at = case when excluded.verified then coalesce(public.user_integrations.verified_at, now())
+        when public.user_integrations.handle = excluded.handle and public.user_integrations.verified_via = 'bio' then public.user_integrations.verified_at
+        else null end,
       verify_code = case when public.user_integrations.handle = excluded.handle then public.user_integrations.verify_code end,
       status_json = case when public.user_integrations.handle = excluded.handle then public.user_integrations.status_json end,
       status_at = case when public.user_integrations.handle = excluded.handle then public.user_integrations.status_at end,
       updated_at = now()
-    returning provider, handle, audience, visible, verified, show_on_verified, show_on_alias`) as Row[];
+    returning provider, handle, audience, visible, verified, verified_via, verified_at, show_on_verified, show_on_alias`) as Row[];
   return toMine(rows[0]!);
 }
 

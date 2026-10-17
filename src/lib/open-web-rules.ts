@@ -1,9 +1,44 @@
 /** Browser-safe rules for keyless open-web fetchers and bio-check verification. */
 
-/** Providers whose ownership can be proven by putting a code in the public bio. */
-export const BIO_VERIFIABLE = ["bluesky", "wsocial", "mastodon", "github"] as const;
-export function isBioVerifiable(provider: string): boolean {
+/**
+ * Verification matrix: per platform whether ownership can be proven via OAuth
+ * sign-in and/or via the public bio, and where the server reads that bio.
+ */
+export const VERIFICATION_MATRIX = {
+  bluesky: { supportsOAuth: true, supportsBioScrape: true, bioSource: "https://public.api.bsky.app/xrpc/app.bsky.actor.getProfile?actor=" },
+  wsocial: { supportsOAuth: false, supportsBioScrape: true, bioSource: "https://public.api.bsky.app/xrpc/app.bsky.actor.getProfile?actor=" },
+  mastodon: { supportsOAuth: false, supportsBioScrape: true, bioSource: "https://<instance>/api/v1/accounts/lookup?acct=" },
+  github: { supportsOAuth: true, supportsBioScrape: true, bioSource: "https://api.github.com/users/" },
+  chesscom: { supportsOAuth: false, supportsBioScrape: true, bioSource: "https://www.chess.com/member/" },
+} as const satisfies Record<string, { supportsOAuth: boolean; supportsBioScrape: boolean; bioSource: string }>;
+
+export type BioProvider = keyof typeof VERIFICATION_MATRIX;
+export const BIO_VERIFIABLE = (Object.keys(VERIFICATION_MATRIX) as BioProvider[]).filter(
+  (k) => VERIFICATION_MATRIX[k].supportsBioScrape,
+);
+export function isBioVerifiable(provider: string): provider is BioProvider {
   return (BIO_VERIFIABLE as readonly string[]).includes(provider);
+}
+
+export type VerificationMethod = "oauth" | "bio_scrape" | null;
+
+function escapeRegex(v: string) {
+  return v.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+/**
+ * True only when the bio contains exactly `rout.be/<username>` (optionally
+ * `www.` or a scheme before it), followed by whitespace, a quote, a slash,
+ * `<`, common punctuation or the end of the text. `rout.be/anna` never
+ * matches `rout.be/annabel`, and `evilrout.be/anna` never matches.
+ */
+export function bioContainsRoutLink(bio: string | null | undefined, username: string): boolean {
+  if (!bio || !username || !/^[a-z0-9._-]{2,40}$/i.test(username)) return false;
+  const re = new RegExp(
+    `(?:^|[\\s"'(<>/:@]|www\\.)rout\\.be/${escapeRegex(username)}(?=[\\s"'/<>)?#,;!]|\\.(?![a-z0-9_-])|$)`,
+    "i",
+  );
+  return re.test(bio);
 }
 
 /** A verification code stays valid this long. */
