@@ -13,6 +13,7 @@ import { memberStatus, SETTABLE_STATUSES, type SettableStatus } from "@/lib/admi
 import { useAuth } from "@/hooks/useAuth";
 import { notifyError, notifySuccess } from "@/lib/notify";
 import { cn } from "@/lib/utils";
+import { AdminGrantVerificationDialog } from "@/components/admin/AdminGrantVerificationDialog";
 
 export const Route = createFileRoute("/_authenticated/admin/members")({
   head: () => ({
@@ -143,6 +144,7 @@ function MembersPage() {
 function MemberSheet({ userId, myId, onClose, onChanged }: { userId: string | null; myId: string | null; onClose: () => void; onChanged: () => void }) {
   const [m, setM] = useState<Member | null>(null);
   const [busy, setBusy] = useState(false);
+  const [grantOpen, setGrantOpen] = useState(false);
 
   const load = useCallback(async () => {
     if (!userId) return;
@@ -195,6 +197,13 @@ function MemberSheet({ userId, myId, onClose, onChanged }: { userId: string | nu
                 <a href={profileUrl(m.handle)} target="_blank" rel="noreferrer" className="mt-3 inline-flex items-center gap-1 text-xs text-primary hover:underline">
                   Publiek profiel <ExternalLink className="h-3 w-3" />
                 </a>
+              )}
+              <div className="mt-3">
+                <Button size="sm" onClick={() => setGrantOpen(true)}>Verifiëren</Button>
+              </div>
+              {userId && (
+                <AdminGrantVerificationDialog userId={userId} open={grantOpen} onOpenChange={setGrantOpen}
+                  onDone={() => { void load(); onChanged(); }} />
               )}
             </Section>
 

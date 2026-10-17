@@ -26,3 +26,7 @@
 - [ ] AI bio polish & translate (profile_descriptions jsonb in Neon) + language switcher in app nav
 - [ ] Uploaded briefs (education components, community messages, identity/OAuth architecture) — not started, awaiting go-ahead
 - [x] Zero-trust bio verification (rout.be/<username> link, Chess.com, verified date)
+- [ ] Bio verification QA in Studio (signed in): modal, spinners, toasts — strict regex only, no AI
+- [x] Audit line under verified accounts: "Geverifieerd op <datum> via Platform Login / Bio-link"
+- [x] Admin: verify users directly (Pro / Influencer / Business) + Conversie Coach mobile button
+- [ ] Smart media autocomplete briefs (2 uploads) — not started, awaiting go-ahead

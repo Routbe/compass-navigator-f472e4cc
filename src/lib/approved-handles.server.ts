@@ -30,6 +30,18 @@ async function ensureTable() {
   ready = true;
 }
 
+/** Stores an admin-chosen allowed list (direct grant, no request). Voids older open entries. */
+export async function storeAllowedHandles(userId: string, kind: string, handles: string[]) {
+  await ensureTable();
+  const requestId = crypto.randomUUID();
+  await sql`update public.approved_handles set status = 'void' where user_id = ${userId} and status = 'approved'`;
+  for (const handle of handles) {
+    await sql`insert into public.approved_handles (user_id, request_id, request_kind, handle)
+      values (${userId}, ${requestId}, ${kind}, ${handle})
+      on conflict (user_id, lower(handle)) do update set status = 'approved', request_id = excluded.request_id`;
+  }
+}
+
 /** Intake-mails: bevestiging naar de aanvrager + beoordelingsmail met knoppen naar de beheerder. */
 export async function notifyIntake(userId: string, kind: "influencer" | "business", _name: string, requestId: string) {
   const { sendRequestReceived } = await import("./verification-mail.server");

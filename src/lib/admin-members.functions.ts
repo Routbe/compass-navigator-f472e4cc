@@ -45,3 +45,36 @@ export const adminActOnOAuthApp = createServerFn({ method: "POST" })
     const { actOnOAuthApp } = await import("./admin-members.server");
     return actOnOAuthApp(context.userId, data.id, data.action);
   });
+
+/** Workspaces a member belongs to (for the direct business grant). */
+export const adminListUserWorkspaces = createServerFn({ method: "POST" })
+  .middleware([requireAuth])
+  .inputValidator((d: unknown) => z.object({ userId: z.string().uuid() }).parse(d))
+  .handler(async ({ data, context }) => {
+    await admin(context.userId);
+    const { listUserWorkspaces } = await import("./admin-grant.server");
+    return listUserWorkspaces(data.userId);
+  });
+
+/** Admin verifies a member directly (Pro, Influencer or Business), without a request. */
+export const adminGrantVerification = createServerFn({ method: "POST" })
+  .middleware([requireAuth])
+  .inputValidator((d: unknown) =>
+    z
+      .object({
+        userId: z.string().uuid(),
+        tier: z.enum(["pro", "influencer", "business"]),
+        firstName: z.string().max(80).optional(),
+        lastName: z.string().max(80).optional(),
+        domain: z.string().max(253).optional(),
+        workspaceId: z.string().uuid().optional(),
+        workspaceName: z.string().max(80).optional(),
+        exceptions: z.array(z.string().max(40)).max(20).optional(),
+      })
+      .parse(d),
+  )
+  .handler(async ({ data, context }) => {
+    await admin(context.userId);
+    const { grantVerification } = await import("./admin-grant.server");
+    return grantVerification({ ...data, adminId: context.userId });
+  });
