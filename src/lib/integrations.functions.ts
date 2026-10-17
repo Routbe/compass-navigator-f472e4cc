@@ -50,7 +50,7 @@ export const removeIntegration = createServerFn({ method: "POST" })
     return { ok: true };
   });
 
-const verifySchema = z.object({ provider: z.enum(["bluesky", "wsocial", "mastodon", "github"]) });
+const verifySchema = z.object({ provider: z.enum(["bluesky", "wsocial", "mastodon", "github", "chesscom"]) });
 
 /** Bio-check step 1: issue a temporary code for the caller's own connection. */
 export const startIntegrationVerify = createServerFn({ method: "POST" })
