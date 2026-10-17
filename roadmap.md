@@ -29,3 +29,4 @@
 - [ ] Bio verification QA in Studio (signed in): modal, spinners, toasts — strict regex only, no AI
 - [x] Audit line under verified accounts: "Geverifieerd op <datum> via Platform Login / Bio-link"
 - [x] Admin: verify users directly (Pro / Influencer / Business) + Conversie Coach mobile button
+- [ ] Smart media autocomplete briefs (2 uploads) — not started, awaiting go-ahead
