@@ -476,6 +476,9 @@ export async function saveMine(
       verified_via = case when excluded.verified then 'sso'
         when public.user_integrations.handle = excluded.handle and public.user_integrations.verified_via = 'bio' then 'bio'
         else null end,
+      verified_at = case when excluded.verified then coalesce(public.user_integrations.verified_at, now())
+        when public.user_integrations.handle = excluded.handle and public.user_integrations.verified_via = 'bio' then public.user_integrations.verified_at
+        else null end,
       verify_code = case when public.user_integrations.handle = excluded.handle then public.user_integrations.verify_code end,
       status_json = case when public.user_integrations.handle = excluded.handle then public.user_integrations.status_json end,
       status_at = case when public.user_integrations.handle = excluded.handle then public.user_integrations.status_at end,
