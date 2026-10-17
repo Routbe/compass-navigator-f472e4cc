@@ -25,3 +25,4 @@
 - [ ] i18n batch 2: Studio/dashboard — primary editor, link/status controls and profile settings translated; remaining specialized panels need a follow-up pass, signed-in verification waits on an active ROUT session
 - [ ] AI bio polish & translate (profile_descriptions jsonb in Neon) + language switcher in app nav
 - [ ] Uploaded briefs (education components, community messages, identity/OAuth architecture) — not started, awaiting go-ahead
+- [x] Zero-trust bio verification (rout.be/<username> link, Chess.com, verified date)

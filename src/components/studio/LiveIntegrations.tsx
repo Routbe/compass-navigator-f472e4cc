@@ -245,7 +245,7 @@ export function LiveIntegrations() {
             )}
             <div className="flex items-center gap-2">
               <span className="flex-1 text-[11px] text-muted-foreground">
-                Status: {row.verified ? "Geverifieerd ✅" : "Handmatig"}
+                Status: {row.verified ? (row.verificationMethod === "bio_scrape" ? <span className="font-medium text-emerald-600">✓ Geverifieerd via bio</span> : <span className="font-medium text-emerald-600">✓ Geverifieerd</span>) : "Handmatig"}
               </span>
               <button type="button" disabled={busy === row.provider} className={`${btn} flex-none px-3 text-destructive`}
                 onClick={() => void run(row.provider, async () => {
