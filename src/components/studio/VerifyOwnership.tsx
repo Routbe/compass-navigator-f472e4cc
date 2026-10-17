@@ -46,6 +46,8 @@ export function VerifyOwnership({
           "We konden de link nog niet vinden. Let op: sommige platforms (zoals Chess.com) hebben enkele minuten nodig om je bio-update zichtbaar te maken. Probeer het over 1 minuut nog eens.",
         );
       }
+    } catch {
+      toast.error("Controleren lukte niet. Probeer het zo meteen opnieuw.");
     } finally {
       setBusy(false);
     }
