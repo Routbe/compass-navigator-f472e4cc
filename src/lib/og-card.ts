@@ -127,7 +127,7 @@ export function badgeSvg(type: OgBadge, x: number, y: number, size: number, ink:
 function textWidth(text: string, size: number, font: string) {
   const factor = /Bebas|Archivo|Orbitron|Mono/i.test(font)
     ? /Bebas/.test(font) ? 0.42 : 0.66
-    : /Caveat|Instrument|Cormorant/i.test(font) ? 0.45 : 0.55;
+    : /Caveat|Instrument|Cormorant/i.test(font) ? 0.42 : /Playfair|Baskerville/i.test(font) ? 0.5 : 0.53;
   return text.length * size * factor;
 }
 
